@@ -181,22 +181,7 @@ function ProjectField({
   );
 }
 
-/* Section label */
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      fontFamily: 'var(--font-sans)',
-      fontSize: 10,
-      fontWeight: 600,
-      letterSpacing: '0.07em',
-      textTransform: 'uppercase',
-      color: 'var(--muted)',
-      marginBottom: 2,
-    }}>
-      {children}
-    </div>
-  );
-}
+
 
 export function EntryModal({ open, existingProjects, initialValues, fullScreen, onClose, onSaved }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -350,9 +335,9 @@ export function EntryModal({ open, existingProjects, initialValues, fullScreen, 
             {/* Main fields: Title, Context, The Decision, Why */}
             {([
               { key: 'title',    label: 'Title',        ph: 'A one-line summary of the decision',  req: true,  rows: 1, isTitle: true },
-              { key: 'context',  label: 'Context',      ph: 'What situation required a decision?', req: true,  rows: 3 },
-              { key: 'decision', label: 'The Decision', ph: 'What did you choose?',                req: true,  rows: 3 },
-              { key: 'why',      label: 'Why',          ph: 'What made this the right choice?',    req: true,  rows: 3 },
+              { key: 'context',  label: 'Context',      ph: 'What situation required a decision?', req: true,  rows: 3, isTitle: false },
+              { key: 'decision', label: 'The Decision', ph: 'What did you choose?',                req: true,  rows: 3, isTitle: false },
+              { key: 'why',      label: 'Why',          ph: 'What made this the right choice?',    req: true,  rows: 3, isTitle: false },
             ] as const).map(({ key, label, ph, req, rows, isTitle }) => (
               <div key={key} style={{ borderBottom: '1px solid var(--border)', padding: '22px 0' }}>
                 <div style={{

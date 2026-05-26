@@ -273,8 +273,6 @@ function TopBarIconBtn({ children, onClick, title }: { children: React.ReactNode
 function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
   const [hovered, setHovered] = useState(false);
   const color = entry.project ? projectColor(entry.project) : 'var(--muted)';
-  const d = new Date(entry.createdAt);
-  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
   return (
     <div
@@ -393,7 +391,6 @@ export function HomeScreen({
   onOpen, onNewEntry, onOpenWeeklyReview, onCycleTheme, onOpenSettings, theme,
   onBrowse, onProject, onType,
 }: Props) {
-  const [focusedIndex, setFocusedIndex] = useState(-1);
   const [weeklyBannerDismissed, setWeeklyBannerDismissed] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -763,7 +760,7 @@ export function HomeScreen({
                   </span>
                 </div>
 
-                {group.items.map((entry, i) => (
+                {group.items.map(entry => (
                   <EntryCard key={entry.id} entry={entry} onOpen={() => onOpen(entry.id)} />
                 ))}
 

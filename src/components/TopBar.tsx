@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { type Theme } from '../hooks/useTheme';
 
 interface TopBarProps {

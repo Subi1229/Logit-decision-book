@@ -43,7 +43,7 @@ const TODAY_START = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
 
 export function Sidebar({
   entries, browseFilter, activeProject, activeType,
-  revisitThreshold, onBrowse, onProject, onType, onOpenSettings,
+  revisitThreshold, onBrowse, onProject, onType,
 }: Props) {
   const thisMonday = getThisMonday6am();
 
