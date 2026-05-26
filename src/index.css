@@ -1,0 +1,159 @@
+@import '@fontsource/newsreader/400.css';
+@import '@fontsource/newsreader/400-italic.css';
+@import '@fontsource/newsreader/600.css';
+@import '@fontsource/geist/400.css';
+@import '@fontsource/geist/500.css';
+
+@import "tailwindcss";
+
+/* ── Theme tokens ──────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  --bg:        #FAF8F3;
+  --surface:   #FFFEFA;
+  --text:      #1F1B16;
+  --secondary: #6B6359;
+  --muted:     #9F968A;
+  --accent:    #B4623F;
+  --border:    #E5DFD3;
+}
+
+[data-theme="dark"] {
+  --bg:        #1A1714;
+  --surface:   #221E1A;
+  --text:      #F2EEE6;
+  --secondary: #A39A8C;
+  --muted:     #6E665B;
+  --accent:    #D88560;
+  --border:    #2E2A24;
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-family: 'Geist', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── Tailwind theme bridge ─────────────────────────────────── */
+@theme inline {
+  --color-bg:        var(--bg);
+  --color-surface:   var(--surface);
+  --color-text:      var(--text);
+  --color-secondary: var(--secondary);
+  --color-muted:     var(--muted);
+  --color-accent:    var(--accent);
+  --color-border:    var(--border);
+
+  --font-sans:  'Geist', system-ui, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+}
+
+/* ── Modal animations ─────────────────────────────────────── */
+@keyframes modal-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(4px); }
+}
+
+/* ── Body font variable ───────────────────────────────────── */
+:root {
+  --body-font: var(--font-serif);
+}
+[data-font="sans"] {
+  --body-font: var(--font-sans);
+}
+[data-font="sans"] .logit-field {
+  font-family: var(--font-sans);
+  font-style: normal;
+}
+[data-font="sans"] .logit-field::placeholder {
+  font-style: normal;
+}
+
+/* ── Borderless field base ────────────────────────────────── */
+.logit-field {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  outline: none;
+  font-family: var(--font-serif);
+  color: var(--text);
+  resize: none;
+  padding: 6px 0 8px;
+  line-height: 1.6;
+  transition: border-color 0.15s;
+}
+.logit-field::placeholder { color: var(--muted); font-style: italic; }
+.logit-field:focus { border-bottom-color: var(--accent); }
+
+.logit-field-title {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-style: normal;
+}
+.logit-field-title::placeholder { font-style: normal; }
+
+/* ── Mobile FAB ───────────────────────────────────────────── */
+.logit-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  z-index: 30;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.logit-fab:active { transform: scale(0.93); }
+
+/* ── Mobile entry modal full-screen sheet ─────────────────── */
+.logit-modal-sheet {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-height: 100vh !important;
+  transform: none !important;
+  border-radius: 0 !important;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
