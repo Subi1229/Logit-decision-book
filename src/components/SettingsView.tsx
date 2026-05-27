@@ -271,7 +271,7 @@ export function SettingsView({ settings, onUpdate, theme, onThemeChange, onBack,
                   Delete every entry. There is no undo.
                 </div>
                 {showDeleteInput && (
-                  <div style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <input
                       type="text"
                       value={deleteConfirm}
@@ -279,38 +279,40 @@ export function SettingsView({ settings, onUpdate, theme, onThemeChange, onBack,
                       placeholder='Type DELETE to confirm'
                       autoFocus
                       style={{
-                        padding: '6px 10px', borderRadius: 6,
+                        padding: '8px 10px', borderRadius: 6,
                         border: '1px solid rgba(180,50,50,0.4)',
-                        background: 'var(--bg)', width: 200,
+                        background: 'var(--bg)', width: '100%',
                         fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text)',
-                        outline: 'none',
+                        outline: 'none', boxSizing: 'border-box',
                       }}
                     />
-                    <button
-                      onClick={handleClearAll}
-                      disabled={deleteConfirm !== 'DELETE'}
-                      style={{
-                        padding: '6px 14px', borderRadius: 6, border: 'none',
-                        background: deleteConfirm === 'DELETE' ? '#c0392b' : 'var(--border)',
-                        color: deleteConfirm === 'DELETE' ? '#fff' : 'var(--muted)',
-                        fontFamily: 'var(--font-sans)', fontSize: 13,
-                        cursor: deleteConfirm === 'DELETE' ? 'pointer' : 'not-allowed',
-                        transition: 'background 0.15s',
-                      }}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => { setShowDeleteInput(false); setDeleteConfirm(''); }}
-                      style={{
-                        padding: '6px 10px', borderRadius: 6,
-                        border: '1px solid var(--border)', background: 'transparent',
-                        color: 'var(--muted)', fontFamily: 'var(--font-sans)',
-                        fontSize: 13, cursor: 'pointer',
-                      }}
-                    >
-                      Cancel
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={handleClearAll}
+                        disabled={deleteConfirm !== 'DELETE'}
+                        style={{
+                          flex: 1, padding: '8px 14px', borderRadius: 6, border: 'none',
+                          background: deleteConfirm === 'DELETE' ? '#c0392b' : 'var(--border)',
+                          color: deleteConfirm === 'DELETE' ? '#fff' : 'var(--muted)',
+                          fontFamily: 'var(--font-sans)', fontSize: 13,
+                          cursor: deleteConfirm === 'DELETE' ? 'pointer' : 'not-allowed',
+                          transition: 'background 0.15s',
+                        }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => { setShowDeleteInput(false); setDeleteConfirm(''); }}
+                        style={{
+                          padding: '8px 14px', borderRadius: 6,
+                          border: '1px solid var(--border)', background: 'transparent',
+                          color: 'var(--muted)', fontFamily: 'var(--font-sans)',
+                          fontSize: 13, cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

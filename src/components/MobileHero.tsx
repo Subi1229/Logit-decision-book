@@ -1,11 +1,22 @@
+import { useState } from 'react';
 import type { Entry } from '../db/database';
 import type { WeeklyStats } from '../lib/weeklyReview';
-import { ChevronRightIcon } from './Icons';
 
 interface Props {
   entries: Entry[];
   weeklyStats: WeeklyStats;
   onOpenWeeklyReview: () => void;
+}
+
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const TIME_PARTS = ['Morning','Afternoon','Evening'];
+
+function dayTimeLabel() {
+  const now = new Date();
+  const day = DAY_NAMES[now.getDay()];
+  const hour = now.getHours();
+  const time = hour < 12 ? TIME_PARTS[0] : hour < 17 ? TIME_PARTS[1] : TIME_PARTS[2];
+  return `${day} ${time}`;
 }
 
 function thisWeekLabel() {
@@ -18,9 +29,20 @@ function thisWeekLabel() {
   return `${fmt(mon)} – ${fmt(sun)}`;
 }
 
+function weekSummary(count: number, period: string): string {
+  if (count === 0) return 'Nothing logged yet. Start the record.';
+  if (count === 1) return `You logged 1 decision ${period}. Keep the momentum going.`;
+  return `You logged ${count} decisions ${period}. Good week.`;
+}
+
 export function MobileHero({ entries, weeklyStats, onOpenWeeklyReview }: Props) {
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const projects = new Set(entries.map(e => e.project).filter(Boolean));
   const avgConf = weeklyStats.avgConfidence;
+
+  const bannerCount = weeklyStats.thisWeekCount > 0 ? weeklyStats.thisWeekCount : weeklyStats.lastWeekCount;
+  const bannerPeriod = weeklyStats.thisWeekCount > 0 ? 'this week' : 'last week';
+  const showBanner = !bannerDismissed && bannerCount > 0;
 
   const stats = [
     { label: 'Total entries', value: String(entries.length) },
@@ -30,7 +52,7 @@ export function MobileHero({ entries, weeklyStats, onOpenWeeklyReview }: Props) 
   ];
 
   return (
-    <div style={{ marginBottom: 24 }}>
+    <div style={{ marginBottom: 20 }}>
       {/* Eyebrow */}
       <div style={{
         fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 500,
@@ -43,7 +65,7 @@ export function MobileHero({ entries, weeklyStats, onOpenWeeklyReview }: Props) 
       {/* Headline */}
       <h1 style={{
         fontFamily: 'var(--font-serif)', fontSize: 26, fontStyle: 'italic',
-        fontWeight: 400, color: 'var(--text)', margin: '0 0 20px',
+        fontWeight: 400, color: 'var(--text)', margin: '0 0 18px',
         lineHeight: 1.2,
       }}>
         A record of why.
@@ -52,7 +74,7 @@ export function MobileHero({ entries, weeklyStats, onOpenWeeklyReview }: Props) 
       {/* Stats grid */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
-        marginBottom: weeklyStats.thisWeekCount > 0 ? 12 : 0,
+        marginBottom: showBanner ? 12 : 0,
       }}>
         {stats.map(s => (
           <div key={s.label} style={{
@@ -75,35 +97,60 @@ export function MobileHero({ entries, weeklyStats, onOpenWeeklyReview }: Props) 
         ))}
       </div>
 
-      {/* Weekly review banner */}
-      {weeklyStats.thisWeekCount > 0 && (
-        <button
-          onClick={onOpenWeeklyReview}
-          style={{
-            width: '100%', padding: '12px 16px', borderRadius: 10,
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{ textAlign: 'left' }}>
-            <div style={{
-              fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600,
-              color: 'var(--text)',
-            }}>
-              Weekly review
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)',
-              marginTop: 2,
-            }}>
-              {weeklyStats.thisWeekCount} {weeklyStats.thisWeekCount === 1 ? 'entry' : 'entries'} logged this week
-            </div>
+      {/* Weekly review banner — left-accent card style */}
+      {showBanner && (
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderLeft: '3px solid #D4A853',
+          borderRadius: 10,
+          padding: '14px 16px',
+        }}>
+          {/* Eyebrow */}
+          <div style={{
+            fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 600,
+            letterSpacing: '0.09em', textTransform: 'uppercase',
+            color: '#D4A853', marginBottom: 8,
+          }}>
+            {dayTimeLabel()} · Weekly Review
           </div>
-          <span style={{ color: 'var(--muted)', flexShrink: 0, display: 'flex' }}>
-            <ChevronRightIcon size={16} />
-          </span>
-        </button>
+
+          {/* Summary sentence */}
+          <p style={{
+            fontFamily: 'var(--font-serif)', fontSize: 15, lineHeight: 1.55,
+            color: 'var(--text)', margin: '0 0 14px',
+          }}>
+            {weekSummary(bannerCount, bannerPeriod).split(/(\d+ decision(?:s)?)/).map((part, i) =>
+              /\d+ decision/.test(part)
+                ? <strong key={i}>{part}</strong>
+                : part
+            )}
+          </p>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <button
+              onClick={onOpenWeeklyReview}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text)',
+                borderBottom: '1px solid var(--text)',
+                paddingBottom: 1,
+              }}
+            >
+              Open weekly review →
+            </button>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)',
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

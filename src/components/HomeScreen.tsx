@@ -874,7 +874,9 @@ export function HomeScreen({
   }
 
   /* Weekly review banner visibility */
-  const showWeeklyBanner = !weeklyBannerDismissed && stats.lastWeekCount > 0;
+  const bannerCount = stats.thisWeekCount > 0 ? stats.thisWeekCount : stats.lastWeekCount;
+  const bannerPeriod = stats.thisWeekCount > 0 ? 'this week' : 'last week';
+  const showWeeklyBanner = !weeklyBannerDismissed && bannerCount > 0;
 
   if (entries.length === 0) {
     return <EmptyState onNewEntry={onNewEntry} onCycleTheme={onCycleTheme} onOpenSettings={onOpenSettings} theme={theme} />;
@@ -1052,7 +1054,7 @@ export function HomeScreen({
               letterSpacing: '0.1em', color: '#C9973A', textTransform: 'uppercase',
               marginBottom: 12,
             }}>
-              {DAY_NAMES[now.getDay()]} Morning · Weekly Review
+              {DAY_NAMES[now.getDay()]} {now.getHours() < 12 ? 'Morning' : now.getHours() < 17 ? 'Afternoon' : 'Evening'} · Weekly Review
             </div>
 
             {/* Body text */}
@@ -1062,9 +1064,9 @@ export function HomeScreen({
               letterSpacing: '0.004em',
             }}>
               You logged{' '}
-              <strong style={{ fontWeight: 600 }}>{stats.lastWeekCount} decision{stats.lastWeekCount !== 1 ? 's' : ''}</strong>
-              {' '}last week
-              {stats.mostActiveProject ? ` — most about the ${stats.mostActiveProject}` : ''}.
+              <strong style={{ fontWeight: 600 }}>{bannerCount} decision{bannerCount !== 1 ? 's' : ''}</strong>
+              {' '}{bannerPeriod}
+              {stats.mostActiveProject ? ` — most about ${stats.mostActiveProject}` : ''}.
               {stats.worthRevisiting.length > 0 ? (
                 <> {stats.worthRevisiting.length} were rated low-confidence at the time.{' '}
                   <strong style={{ fontWeight: 600 }}>Revisit them?</strong>
