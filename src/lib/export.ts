@@ -51,10 +51,22 @@ export function exportEntriesMarkdown(entries: Entry[]) {
   download(content, `logit-export-${dateStamp()}.md`, 'text/markdown');
 }
 
-export function exportEntriesJSON(entries: Entry[]) {
+export function exportEntryJSON(entry: Entry) {
+  const slug = entry.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50);
+  download(
+    JSON.stringify({ version: 1, exportedAt: Date.now(), entries: [entry] }, null, 2),
+    `logit-${slug}.json`,
+    'application/json',
+  );
+}
+
+export function exportEntriesJSON(entries: Entry[], label?: string) {
+  const name = label
+    ? `logit-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}-${dateStamp()}`
+    : `logit-export-${dateStamp()}`;
   download(
     JSON.stringify({ version: 1, exportedAt: Date.now(), entries }, null, 2),
-    `logit-export-${dateStamp()}.json`,
+    `${name}.json`,
     'application/json',
   );
 }

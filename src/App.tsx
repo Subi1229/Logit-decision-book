@@ -9,12 +9,12 @@ import { WeeklyReview } from './components/WeeklyReview';
 import { Toast } from './components/Toast';
 import { Sidebar } from './components/Sidebar';
 import { HomeScreen } from './components/HomeScreen';
+import { MobileHero } from './components/MobileHero';
 import type { BrowseFilter } from './components/Sidebar';
 import { useTheme } from './hooks/useTheme';
 import { useSettings } from './hooks/useSettings';
 import { useMobile } from './hooks/useMobile';
 import { useEntries } from './hooks/useEntries';
-import { seedIfEmpty } from './db/seed';
 import { shouldShowWeeklyReview, markWeeklyReviewShown, computeWeeklyStats } from './lib/weeklyReview';
 import type { Entry } from './db/database';
 
@@ -35,10 +35,11 @@ export default function App() {
   const [browseFilter, setBrowseFilter] = useState<BrowseFilter>('all');
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [activeType, setActiveType]    = useState<string | null>(null);
+  const [autoEdit, setAutoEdit]        = useState(false);
   const listScrollPos                  = useRef(0);
   const searchRef                      = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { seedIfEmpty(); }, []);
+  // seedIfEmpty removed — empty state shown instead
 
   useEffect(() => {
     if (shouldShowWeeklyReview(settings.weeklyReviewEnabled)) {
@@ -58,11 +59,20 @@ export default function App() {
 
   function goToDetail(id: string) {
     listScrollPos.current = window.scrollY;
+    setAutoEdit(false);
+    setView({ id });
+    setSearchQuery('');
+    if (isMobile) window.scrollTo(0, 0);
+  }
+  function goToDetailEdit(id: string) {
+    listScrollPos.current = window.scrollY;
+    setAutoEdit(true);
     setView({ id });
     setSearchQuery('');
     if (isMobile) window.scrollTo(0, 0);
   }
   function goToList() {
+    setAutoEdit(false);
     setView('list');
     if (isMobile) requestAnimationFrame(() => window.scrollTo(0, listScrollPos.current));
   }
@@ -90,8 +100,8 @@ export default function App() {
   if (!isMobile) {
     return (
       <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
-        {/* Sidebar — always visible on desktop */}
-        {view !== 'settings' && typeof view !== 'object' && (
+        {/* Sidebar — only when there are entries */}
+        {view !== 'settings' && typeof view !== 'object' && entries.length > 0 && (
           <Sidebar
             entries={entries}
             browseFilter={browseFilter}
@@ -117,7 +127,9 @@ export default function App() {
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               onOpen={goToDetail}
+              onOpenEdit={goToDetailEdit}
               onNewEntry={() => openModal()}
+              onDuplicate={duplicateEntry}
               onOpenWeeklyReview={() => setWeeklyOpen(true)}
               onCycleTheme={cycle}
               onOpenSettings={() => setView('settings')}
@@ -141,6 +153,7 @@ export default function App() {
                 revisitPromptsEnabled={settings.revisitPromptsEnabled}
                 revisitThreshold={settings.revisitThreshold}
                 isMobile={false}
+                autoEdit={autoEdit}
               />
             </div>
           )}
@@ -206,6 +219,13 @@ export default function App() {
       />
 
       <main style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px' }}>
+        {view === 'list' && entries.length > 0 && (
+          <MobileHero
+            entries={entries}
+            weeklyStats={weeklyStats}
+            onOpenWeeklyReview={() => setWeeklyOpen(true)}
+          />
+        )}
         {view === 'list' && (
           <ListView
             entries={entries}
@@ -232,6 +252,7 @@ export default function App() {
             revisitPromptsEnabled={settings.revisitPromptsEnabled}
             revisitThreshold={settings.revisitThreshold}
             isMobile={isMobile}
+            autoEdit={autoEdit}
           />
         )}
 

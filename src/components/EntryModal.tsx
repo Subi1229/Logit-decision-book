@@ -518,31 +518,71 @@ export function EntryModal({ open, existingProjects, initialValues, fullScreen, 
         </div>
 
         {/* Footer */}
-        <div style={{
-          flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8,
-          padding: '16px 32px',
-          borderTop: '1px solid var(--border)',
-          background: '#faf9f6',
-        }}>
-          <span style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)', marginRight: 'auto' }}>
-            <span style={{ color: '#c0392b' }}>*</span> Title + Decision required
-          </span>
-          <button
-            type="button" disabled={!valid} onClick={() => save(true)}
-            style={{ ...btnBase, border: '1px solid var(--border)', background: 'transparent', color: 'var(--secondary)' }}
-          >
-            Save & new
-            <kbd style={{ ...kbdStyle, borderColor: 'var(--border)', color: 'var(--muted)' }}>⌘⇧↵</kbd>
-          </button>
-          <button
-            type="button" disabled={!valid} onClick={() => save(false)}
-            style={{ ...btnBase, border: 'none', background: 'var(--accent)', color: '#fff' }}
-          >
-            Save & close
-            <kbd style={{ ...kbdStyle, borderColor: 'rgba(255,255,255,0.35)', color: 'rgba(255,255,255,0.8)' }}>⌘↵</kbd>
-          </button>
-        </div>
+        {fullScreen ? (
+          /* Mobile footer — compact pill buttons, no kbd hints */
+          <div style={{
+            flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '12px 20px 16px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
+          }}>
+            <button
+              type="button" disabled={!valid} onClick={() => save(true)}
+              style={{
+                fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 500,
+                padding: '9px 16px', borderRadius: 20,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--secondary)',
+                cursor: valid ? 'pointer' : 'not-allowed',
+                opacity: valid ? 1 : 0.4,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Save & new
+            </button>
+            <button
+              type="button" disabled={!valid} onClick={() => save(false)}
+              style={{
+                flex: 1,
+                fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 500,
+                padding: '9px 16px', borderRadius: 20,
+                border: 'none', background: 'var(--accent)', color: '#fff',
+                cursor: valid ? 'pointer' : 'not-allowed',
+                opacity: valid ? 1 : 0.4,
+              }}
+            >
+              Save & close
+            </button>
+          </div>
+        ) : (
+          /* Desktop footer */
+          <div style={{
+            flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8,
+            padding: '16px 32px',
+            borderTop: '1px solid var(--border)',
+            background: '#faf9f6',
+          }}>
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)', marginRight: 'auto' }}>
+              <span style={{ color: '#c0392b' }}>*</span> Title + Decision required
+            </span>
+            <button
+              type="button" disabled={!valid} onClick={() => save(true)}
+              style={{ ...btnBase, border: '1px solid var(--border)', background: 'transparent', color: 'var(--secondary)' }}
+            >
+              Save & new
+              <kbd style={{ ...kbdStyle, borderColor: 'var(--border)', color: 'var(--muted)' }}>⌘⇧↵</kbd>
+            </button>
+            <button
+              type="button" disabled={!valid} onClick={() => save(false)}
+              style={{ ...btnBase, border: 'none', background: 'var(--accent)', color: '#fff' }}
+            >
+              Save & close
+              <kbd style={{ ...kbdStyle, borderColor: 'rgba(255,255,255,0.35)', color: 'rgba(255,255,255,0.8)' }}>⌘↵</kbd>
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

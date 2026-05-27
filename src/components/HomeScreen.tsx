@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Entry } from '../db/database';
+import { db } from '../db/database';
 import type { BrowseFilter } from './Sidebar';
+import { DetailView } from './DetailView';
 import { SunIcon, MoonIcon, MonitorIcon, SettingsIcon } from './Icons';
 import { groupEntries, relativeTime, absoluteDate } from '../lib/dates';
 import { searchEntries } from '../lib/search';
 import { needsRevisitCheck, computeWeeklyStats } from '../lib/weeklyReview';
 import { ConfidenceDots } from './ConfidenceDots';
+import { exportEntryJSON } from '../lib/export';
 
 interface Props {
   entries: Entry[];
@@ -16,7 +19,9 @@ interface Props {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onOpen: (id: string) => void;
+  onOpenEdit: (id: string) => void;
   onNewEntry: () => void;
+  onDuplicate: (entry: Entry) => void;
   onOpenWeeklyReview: () => void;
   onCycleTheme: () => void;
   onOpenSettings: () => void;
@@ -269,19 +274,105 @@ function TopBarIconBtn({ children, onClick, title }: { children: React.ReactNode
   );
 }
 
+/* ── Kebab menu ──────────────────────────────────────────── */
+function KebabMenu({ entry, onEdit, onDuplicate, onDeleteRequest }: {
+  entry: Entry;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDeleteRequest: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const menuItems: { label: string; danger?: boolean; action: () => void }[] = [
+    { label: 'Edit',        action: () => { setOpen(false); onEdit(); } },
+    { label: 'Duplicate',   action: () => { setOpen(false); onDuplicate(); } },
+    { label: 'Export JSON', action: () => { setOpen(false); exportEntryJSON(entry); } },
+    { label: 'Delete', danger: true, action: () => { setOpen(false); onDeleteRequest(); } },
+  ];
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)',
+          background: '#fff', color: '#111', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+          <circle cx="7" cy="2.5" r="1.2"/>
+          <circle cx="7" cy="7" r="1.2"/>
+          <circle cx="7" cy="11.5" r="1.2"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 32, right: 0, zIndex: 200,
+          background: '#fff',
+          border: '1px solid rgba(0,0,0,0.08)',
+          borderRadius: 12,
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 16px 40px -4px rgba(0,0,0,0.13)',
+          minWidth: 164, overflow: 'hidden',
+          transformOrigin: 'top right',
+          animation: 'dropdown-in 0.18s cubic-bezier(0.16,1,0.3,1)',
+        }}>
+          {menuItems.map((item, i) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '9px 14px', background: 'none', border: 'none',
+                borderTop: i > 0 && item.danger ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontSize: 13,
+                color: item.danger ? '#e05252' : '#1a1a1a',
+                transition: 'background 0.08s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f7f7f5')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Expanded entry card ─────────────────────────────────── */
-function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
+function EntryCard({ entry, onOpen, onEdit, onDuplicate, isExample }: {
+  entry: Entry; onOpen: () => void; onEdit?: () => void; onDuplicate?: () => void; isExample?: boolean;
+}) {
   const [hovered, setHovered] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const color = entry.project ? projectColor(entry.project) : 'var(--muted)';
 
   return (
+    <>
     <div
-      onClick={onOpen}
-      onMouseEnter={() => setHovered(true)}
+      onClick={isExample ? undefined : onOpen}
+      onMouseEnter={() => !isExample && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '24px 0 28px', borderBottom: '1px solid var(--border)',
-        cursor: 'pointer', transition: 'background 0.1s',
+        cursor: isExample ? 'default' : 'pointer',
+        transform: hovered && !isExample ? 'translateX(6px)' : 'translateX(0)',
+        transition: 'transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        position: 'relative',
       }}
     >
       {/* Meta row */}
@@ -307,10 +398,21 @@ function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
           </span>
         )}
         <span style={{
-          fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)', marginLeft: 'auto',
+          fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)',
         }}>
           {relativeTime(entry.createdAt)}
         </span>
+        {/* Spacer + Kebab menu — appears on hover */}
+        <span style={{ flex: 1 }} />
+        {!isExample && onDuplicate && onEdit && (
+          <div style={{
+            opacity: hovered ? 1 : 0,
+            transition: 'opacity 0.15s',
+            pointerEvents: hovered ? 'auto' : 'none',
+          }}>
+            <KebabMenu entry={entry} onEdit={onEdit} onDuplicate={onDuplicate} onDeleteRequest={() => setConfirming(true)} />
+          </div>
+        )}
       </div>
 
       {/* Title */}
@@ -330,8 +432,8 @@ function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
           color: 'var(--secondary)', margin: '0 0 14px',
         }}>
           <span style={{
-            fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700,
-            letterSpacing: '0.1em', color: 'var(--muted)', marginRight: 8,
+            fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 500,
+            letterSpacing: '0.08em', color: 'var(--muted)', marginRight: 8,
             textTransform: 'uppercase',
           }}>Context.</span>
           {entry.context}
@@ -349,8 +451,8 @@ function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
             color: 'var(--text)', margin: 0,
           }}>
             <span style={{
-              fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700,
-              letterSpacing: '0.1em', color: 'var(--muted)', marginRight: 8,
+              fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 500,
+              letterSpacing: '0.08em', color: 'var(--muted)', marginRight: 8,
               textTransform: 'uppercase',
             }}>Chose.</span>
             <em style={{ color: 'var(--accent)' }}>{entry.decision}</em>
@@ -364,8 +466,8 @@ function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
           {entry.confidence && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <span style={{
-                fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700,
-                letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase',
+                fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 500,
+                letterSpacing: '0.08em', color: 'var(--muted)', textTransform: 'uppercase',
               }}>Confidence</span>
               <ConfidenceDots value={entry.confidence} />
             </div>
@@ -381,6 +483,202 @@ function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
         </div>
       )}
     </div>
+
+    {/* Delete confirmation — rendered outside hover wrapper so opacity doesn't hide it */}
+    {confirming && (
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 300,
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 20px', borderRadius: 10,
+          background: 'var(--bg)', border: '1px solid var(--border)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+          whiteSpace: 'nowrap',
+          animation: 'bottom-bar-in 0.22s cubic-bezier(0.16,1,0.3,1)',
+        }}
+      >
+        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--secondary)' }}>
+          Delete this entry permanently?
+        </span>
+        <button
+          onClick={async () => { setConfirming(false); await db.entries.delete(entry.id); }}
+          style={{
+            padding: '6px 16px', borderRadius: 6, border: 'none',
+            background: '#E05252', color: '#fff',
+            fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+          }}
+        >
+          Delete
+        </button>
+        <button
+          onClick={() => setConfirming(false)}
+          style={{
+            padding: '6px 14px', borderRadius: 6,
+            border: '1px solid var(--border)', background: 'transparent',
+            color: 'var(--secondary)',
+            fontFamily: 'var(--font-sans)', fontSize: 13, cursor: 'pointer',
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    )}
+    </>
+  );
+}
+
+const EXAMPLE_ENTRY: Entry = {
+  id: '__example__',
+  title: 'Use bottom navigation over hamburger menu on mobile',
+  context:
+    'We were redesigning the mobile nav for the consumer app. The hamburger menu had been in place since v1 but analytics showed a 34% drop-off on menu interactions. Users were struggling to discover secondary sections.',
+  decision:
+    'Switch to a persistent bottom tab bar with five destinations: Home, Explore, Saved, Notifications, Profile.',
+  why:
+    'Bottom nav keeps primary actions in thumb reach. It surfaces all top-level sections simultaneously, eliminating the discoverability problem. iOS and Android both have strong bottom-nav conventions users are trained to expect.',
+  alternatives:
+    'Keep hamburger with improved animation and labels. Top tab bar. Gesture-based navigation (swipe between sections).',
+  tradeoffs:
+    "Loses ~80px of vertical screen space. Five-tab constraint means we can't expose more than five destinations — forces prioritisation decisions we've been avoiding. On tablets the bottom nav feels awkward.",
+  project: 'Consumer App',
+  type: 'interaction',
+  confidence: 4,
+  createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
+  updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
+  revisits: [
+    {
+      date: Date.now() - 1000 * 60 * 60 * 24 * 7,
+      note: 'Three weeks post-launch. Menu interaction rate up 61%. Session depth increased. No significant complaints about screen real estate loss.',
+      outcome: 'confirmed',
+    },
+  ],
+};
+
+function EmptyState({ onNewEntry, onCycleTheme, onOpenSettings, theme }: {
+  onNewEntry: () => void;
+  onCycleTheme: () => void;
+  onOpenSettings: () => void;
+  theme: string;
+}) {
+  const [showExample, setShowExample] = useState(false);
+
+  if (showExample) {
+    return (
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
+          <DetailView
+            entry={EXAMPLE_ENTRY}
+            allEntries={[]}
+            onBack={() => setShowExample(false)}
+            onOpen={() => {}}
+            onDuplicate={() => { onNewEntry(); setShowExample(false); }}
+            onDeleted={() => setShowExample(false)}
+            onToast={() => {}}
+            revisitPromptsEnabled={false}
+            isMobile={false}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* Top bar */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--bg)', borderBottom: '1px solid var(--border)',
+        padding: '10px 40px', display: 'flex', alignItems: 'center', gap: 12,
+        justifyContent: 'flex-end',
+      }}>
+        <TopBarIconBtn title="Toggle theme" onClick={onCycleTheme}>
+          {theme === 'light' ? <SunIcon size={16} /> : theme === 'dark' ? <MoonIcon size={16} /> : <MonitorIcon size={16} />}
+        </TopBarIconBtn>
+        <TopBarIconBtn title="Settings" onClick={onOpenSettings}>
+          <SettingsIcon size={16} />
+        </TopBarIconBtn>
+      </div>
+
+      {/* Landing content */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', padding: '60px 40px 72px',
+      }}>
+        <div style={{ maxWidth: 580, width: '100%' }}>
+          {/* Wordmark */}
+          <div style={{
+            fontFamily: 'var(--font-serif)', fontSize: 56, fontWeight: 400,
+            color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1,
+            marginBottom: 18, textAlign: 'center',
+          }}>
+            <em>Logit</em><span style={{ color: 'var(--accent)' }}>.</span>
+          </div>
+
+          {/* Tagline */}
+          <p style={{
+            fontFamily: 'var(--font-serif)', fontSize: 16, fontStyle: 'italic',
+            color: 'var(--secondary)', textAlign: 'center',
+            margin: '0 0 32px', lineHeight: 1.5,
+          }}>
+            A logbook for designers who think out loud.
+          </p>
+
+          {/* Body copy */}
+          <p style={{
+            fontFamily: 'var(--font-serif)', fontSize: 15, lineHeight: 1.7,
+            color: 'var(--text)', margin: '0 0 14px',
+          }}>
+            Designers make hundreds of decisions every week. Most vanish into Figma
+            history, Slack threads, or memory. When an interviewer asks{' '}
+            <em>why did you choose that?</em>, the answer often blanks — not because
+            you didn't have a reason, but because you never wrote it down.
+          </p>
+          <p style={{
+            fontFamily: 'var(--font-serif)', fontSize: 15, lineHeight: 1.7,
+            color: 'var(--text)', margin: '0 0 36px',
+          }}>
+            Logit gives you a place to capture the reasoning while it's still fresh.
+            Over time, your log becomes a record of how you think.
+          </p>
+
+          {/* CTA */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+            <button
+              onClick={onNewEntry}
+              style={{
+                background: 'var(--accent)', border: 'none', borderRadius: 10,
+                padding: '16px 36px', cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 600,
+                color: '#fff', letterSpacing: '0.01em',
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+            >
+              Log your first decision
+            </button>
+
+            <button
+              onClick={() => setShowExample(true)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                fontFamily: 'var(--font-sans)', fontSize: 14,
+                color: 'var(--accent)', letterSpacing: '0.01em',
+                borderBottom: '1px solid transparent',
+                paddingBottom: 1,
+                transition: 'border-color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'transparent')}
+            >
+              See an example entry →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -388,7 +686,7 @@ function EntryCard({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
 export function HomeScreen({
   entries, browseFilter, activeProject, activeType,
   revisitThreshold, searchQuery, onSearchChange,
-  onOpen, onNewEntry, onOpenWeeklyReview, onCycleTheme, onOpenSettings, theme,
+  onOpen, onOpenEdit, onNewEntry, onDuplicate, onOpenWeeklyReview, onCycleTheme, onOpenSettings, theme,
   onBrowse, onProject, onType,
 }: Props) {
   const [weeklyBannerDismissed, setWeeklyBannerDismissed] = useState(false);
@@ -481,6 +779,10 @@ export function HomeScreen({
 
   /* Weekly review banner visibility */
   const showWeeklyBanner = !weeklyBannerDismissed && stats.lastWeekCount > 0;
+
+  if (entries.length === 0) {
+    return <EmptyState onNewEntry={onNewEntry} onCycleTheme={onCycleTheme} onOpenSettings={onOpenSettings} theme={theme} />;
+  }
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -720,7 +1022,7 @@ export function HomeScreen({
           ) : (
             <>
               {displayed!.map(entry => (
-                <EntryCard key={entry.id} entry={entry} onOpen={() => onOpen(entry.id)} />
+                <EntryCard key={entry.id} entry={entry} onOpen={() => onOpen(entry.id)} onEdit={() => onOpenEdit(entry.id)} onDuplicate={() => onDuplicate(entry)} />
               ))}
             </>
           )
@@ -761,7 +1063,7 @@ export function HomeScreen({
                 </div>
 
                 {group.items.map(entry => (
-                  <EntryCard key={entry.id} entry={entry} onOpen={() => onOpen(entry.id)} />
+                  <EntryCard key={entry.id} entry={entry} onOpen={() => onOpen(entry.id)} onEdit={() => onOpenEdit(entry.id)} onDuplicate={() => onDuplicate(entry)} />
                 ))}
 
                 <div style={{ height: 32 }} />

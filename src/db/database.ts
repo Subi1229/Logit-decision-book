@@ -30,6 +30,9 @@ class LogitDatabase extends Dexie {
     this.version(1).stores({
       entries: 'id, title, project, type, confidence, createdAt, updatedAt',
     });
+    this.version(2).stores({
+      entries: 'id, title, project, type, confidence, createdAt, updatedAt',
+    }).upgrade(tx => tx.table('entries').clear());
   }
 }
 

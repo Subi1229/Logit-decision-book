@@ -1,4 +1,5 @@
 import { type Theme } from '../hooks/useTheme';
+import { SunIcon, MoonIcon, MonitorIcon, SettingsIcon as SettingsIconShared } from './Icons';
 
 interface TopBarProps {
   theme: Theme;
@@ -12,32 +13,9 @@ interface TopBarProps {
 }
 
 function ThemeIcon({ theme }: { theme: Theme }) {
-  if (theme === 'light') return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  );
-  if (theme === 'dark') return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-    </svg>
-  );
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="3" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M5 13.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  );
+  if (theme === 'light') return <SunIcon size={16} />;
+  if (theme === 'dark')  return <MoonIcon size={16} />;
+  return <MonitorIcon size={16} />;
 }
 
 const iconBtn: React.CSSProperties = {
@@ -140,7 +118,7 @@ export function TopBar({
           <ThemeIcon theme={theme} />
         </button>
         <button onClick={onOpenSettings} title="Settings" style={iconBtn}>
-          <SettingsIcon />
+          <SettingsIconShared size={16} />
         </button>
       </div>
     </header>

@@ -3,7 +3,8 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { db, type Entry, type Revisit } from '../db/database';
 import { ConfidenceDots } from './ConfidenceDots';
 import { absoluteDate, relativeTime, relativeTimeLong } from '../lib/dates';
-import { EditIcon, DuplicateIcon, TrashIcon } from './Icons';
+import { EditIcon, DuplicateIcon, TrashIcon, ShareIcon } from './Icons';
+import { exportEntryJSON } from '../lib/export';
 
 const TYPE_LABELS: Record<NonNullable<Entry['type']>, string> = {
   visual: 'Visual', interaction: 'Interaction', ia: 'IA',
@@ -235,6 +236,9 @@ type EditForm = {
   why: string;
   alternatives: string;
   tradeoffs: string;
+  project: string;
+  type: Entry['type'];
+  confidence: Entry['confidence'];
   revisedNote: string; // only used in revise mode
 };
 
@@ -246,6 +250,9 @@ function entryToForm(e: Entry): EditForm {
     why: e.why,
     alternatives: e.alternatives ?? '',
     tradeoffs: e.tradeoffs ?? '',
+    project: e.project ?? '',
+    type: e.type,
+    confidence: e.confidence,
     revisedNote: '',
   };
 }
@@ -281,6 +288,30 @@ function IconBtn({ children, onClick, title, danger }: {
   );
 }
 
+function MobileBarBtn({ children, onClick, label, danger }: {
+  children: React.ReactNode;
+  onClick: () => void;
+  label: string;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1, height: 44, borderRadius: 8, border: 'none',
+        background: 'transparent',
+        color: danger ? '#E05252' : 'var(--secondary)',
+        cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', gap: 3,
+      }}
+    >
+      {children}
+      <span style={{ fontFamily: 'var(--font-sans)', fontSize: 10, lineHeight: 1 }}>{label}</span>
+    </button>
+  );
+}
+
 /* ── main component ───────────────────────────────────────── */
 
 interface Props {
@@ -294,16 +325,17 @@ interface Props {
   revisitPromptsEnabled?: boolean;
   revisitThreshold?: number;
   isMobile?: boolean;
+  autoEdit?: boolean;
 }
 
 export function DetailView({ entry, allEntries, onBack, onOpen, onDuplicate, onDeleted, onToast,
-  revisitPromptsEnabled = true, revisitThreshold = 30, isMobile = false,
+  revisitPromptsEnabled = true, revisitThreshold = 30, isMobile = false, autoEdit = false,
 }: Props) {
-  const [isEditing, setIsEditing]       = useState(false);
+  const [isEditing, setIsEditing]       = useState(autoEdit);
   const [isRevising, setIsRevising]     = useState(false);
   const [revisitDismissed, setRevisitDismissed] = useState(false);
   const [form, setForm]                 = useState<EditForm>(entryToForm(entry));
-  const [focusField, setFocusField]     = useState<keyof EditForm | null>(null);
+  const [focusField, setFocusField]     = useState<keyof EditForm | null>(autoEdit ? 'title' : null);
   const [deletePrompt, setDeletePrompt] = useState(false);
   const titleInputRef                   = useRef<HTMLInputElement>(null);
 
@@ -334,6 +366,9 @@ export function DetailView({ entry, allEntries, onBack, onOpen, onDuplicate, onD
       why:          form.why.trim()          || entry.why,
       alternatives: form.alternatives.trim() || undefined,
       tradeoffs:    form.tradeoffs.trim()    || undefined,
+      project:      form.project.trim()      || undefined,
+      type:         form.type,
+      confidence:   form.confidence,
       updatedAt:    now,
     };
 
@@ -408,7 +443,7 @@ export function DetailView({ entry, allEntries, onBack, onOpen, onDuplicate, onD
     setForm(prev => ({ ...prev, [k]: v }));
 
   return (
-    <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', maxWidth: 820, margin: '0 auto' }}>
+    <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', maxWidth: 820, margin: '0 auto', paddingBottom: isMobile ? 80 : 0 }}>
 
       {/* ── Main content ────────────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -576,6 +611,81 @@ export function DetailView({ entry, allEntries, onBack, onOpen, onDuplicate, onD
         </div>
       )}
 
+      {/* Project / Type / Confidence — edit only */}
+      {isEditing && (
+        <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Project */}
+          <div>
+            <SectionHeading>Project</SectionHeading>
+            <input
+              className="logit-field"
+              value={form.project}
+              onChange={e => setForm(f => ({ ...f, project: e.target.value }))}
+              placeholder="Which project is this for?"
+              style={{ fontSize: 15, width: '100%' }}
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <SectionHeading>Type</SectionHeading>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+              {(Object.keys(TYPE_LABELS) as NonNullable<Entry['type']>[]).map(t => {
+                const active = form.type === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, type: active ? undefined : t }))}
+                    style={{
+                      padding: '4px 12px', borderRadius: 20,
+                      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      background: active ? 'var(--accent)' : 'transparent',
+                      color: active ? '#fff' : 'var(--secondary)',
+                      fontFamily: 'var(--font-sans)', fontSize: 12,
+                      cursor: 'pointer', transition: 'all 0.1s',
+                    }}
+                  >
+                    {TYPE_LABELS[t]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Confidence */}
+          <div>
+            <SectionHeading>Confidence</SectionHeading>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              {([1, 2, 3, 4, 5] as const).map(n => {
+                const filled = form.confidence !== undefined && n <= form.confidence;
+                const danger = form.confidence !== undefined && form.confidence <= 2;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, confidence: f.confidence === n ? undefined : n }))}
+                    title={`${n}/5`}
+                    style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: filled ? (danger ? '#E05252' : 'var(--accent)') : 'var(--border)',
+                      border: 'none', cursor: 'pointer', padding: 0,
+                      transition: 'background 0.1s, transform 0.1s',
+                      transform: filled ? 'scale(1.15)' : 'scale(1)',
+                    }}
+                  />
+                );
+              })}
+              {form.confidence && (
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)', marginLeft: 4 }}>
+                  {form.confidence}/5
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Revisit history */}
       {entry.revisits?.length ? (
         <div style={{ marginTop: 40 }}>
@@ -619,8 +729,8 @@ export function DetailView({ entry, allEntries, onBack, onOpen, onDuplicate, onD
         </div>
       ) : null}
 
-      {/* Delete confirm — fixed bottom bar */}
-      {deletePrompt && (
+      {/* Delete confirm — desktop: fixed bottom bar */}
+      {deletePrompt && !isMobile && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
           zIndex: 50,
@@ -659,6 +769,61 @@ export function DetailView({ entry, allEntries, onBack, onOpen, onDuplicate, onD
         </div>
       )}
 
+      {/* Delete confirm — mobile: centered overlay modal */}
+      {deletePrompt && isMobile && (
+        <div
+          onClick={() => setDeletePrompt(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)', borderRadius: 16,
+              padding: '28px 24px 20px', width: 300,
+              boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+            }}
+          >
+            <p style={{
+              fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 600,
+              color: 'var(--text)', margin: '0 0 8px',
+            }}>Delete entry?</p>
+            <p style={{
+              fontFamily: 'var(--font-sans)', fontSize: 13,
+              color: 'var(--secondary)', margin: '0 0 24px', lineHeight: 1.5,
+            }}>
+              This will permanently remove this decision log.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setDeletePrompt(false)}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'transparent',
+                  color: 'var(--secondary)', fontFamily: 'var(--font-sans)',
+                  fontSize: 14, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 8,
+                  border: 'none', background: '#E05252', color: '#fff',
+                  fontFamily: 'var(--font-sans)', fontSize: 14,
+                  fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Related entries */}
       {related.length > 0 && (
         <div style={{ marginTop: 56, paddingTop: 32, borderTop: '1px solid var(--border)' }}>
@@ -679,57 +844,111 @@ export function DetailView({ entry, allEntries, onBack, onOpen, onDuplicate, onD
       <div style={{ height: 80 }} />
       </div>{/* end main content */}
 
-      {/* ── Right action strip ──────────────────────────────── */}
-      <div style={{
-        display: 'flex', flexDirection: 'column', gap: 8,
-        paddingTop: 0, flexShrink: 0,
-        position: 'sticky', top: 0,
-      }}>
-        {!isEditing ? (
-          <>
-            <IconBtn title="Edit (E)" onClick={() => startEditing('title')}>
-              <EditIcon size={16} />
-            </IconBtn>
-            <IconBtn title="Duplicate (D)" onClick={() => onDuplicate(entry)}>
-              <DuplicateIcon size={16} />
-            </IconBtn>
-            <IconBtn
-              title="Delete (⌘⌫)"
-              onClick={() => setDeletePrompt(true)}
-              danger={deletePrompt}
-            >
-              <TrashIcon size={16} />
-            </IconBtn>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={saveEdit}
-              style={{
-                background: 'var(--accent)', border: 'none',
-                borderRadius: 6, padding: '6px 12px',
-                fontFamily: 'var(--font-sans)', fontSize: 12,
-                fontWeight: 500, color: '#fff', cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Save <span style={{ opacity: 0.7, fontSize: 10 }}>⌘S</span>
-            </button>
-            <button
-              onClick={cancelEdit}
-              style={{
-                background: 'none', border: '1px solid var(--border)',
-                borderRadius: 6, padding: '6px 12px',
-                fontFamily: 'var(--font-sans)', fontSize: 12,
-                color: 'var(--secondary)', cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Cancel <span style={{ opacity: 0.5, fontSize: 10 }}>Esc</span>
-            </button>
-          </>
-        )}
-      </div>
+      {/* ── Right action strip (desktop only) ──────────────── */}
+      {!isMobile && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 8,
+          paddingTop: 0, flexShrink: 0,
+          position: 'sticky', top: 0,
+        }}>
+          {!isEditing ? (
+            <>
+              <IconBtn title="Edit (E)" onClick={() => startEditing('title')}>
+                <EditIcon size={16} />
+              </IconBtn>
+              <IconBtn title="Duplicate (D)" onClick={() => onDuplicate(entry)}>
+                <DuplicateIcon size={16} />
+              </IconBtn>
+              <IconBtn
+                title="Delete (⌘⌫)"
+                onClick={() => setDeletePrompt(true)}
+                danger={deletePrompt}
+              >
+                <TrashIcon size={16} />
+              </IconBtn>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={saveEdit}
+                style={{
+                  background: 'var(--accent)', border: 'none',
+                  borderRadius: 6, padding: '6px 12px',
+                  fontFamily: 'var(--font-sans)', fontSize: 12,
+                  fontWeight: 500, color: '#fff', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Save <span style={{ opacity: 0.7, fontSize: 10 }}>⌘S</span>
+              </button>
+              <button
+                onClick={cancelEdit}
+                style={{
+                  background: 'none', border: '1px solid var(--border)',
+                  borderRadius: 6, padding: '6px 12px',
+                  fontFamily: 'var(--font-sans)', fontSize: 12,
+                  color: 'var(--secondary)', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Cancel <span style={{ opacity: 0.5, fontSize: 10 }}>Esc</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Mobile bottom action bar ──────────────────────────── */}
+      {isMobile && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center',
+          padding: '0 8px',
+          height: 60,
+          gap: 4,
+        }}>
+          {!isEditing ? (
+            <>
+              <MobileBarBtn label="Edit" onClick={() => startEditing('title')}>
+                <EditIcon size={18} />
+              </MobileBarBtn>
+              <MobileBarBtn label="Export" onClick={() => exportEntryJSON(entry)}>
+                <ShareIcon size={18} />
+              </MobileBarBtn>
+              <MobileBarBtn label="Delete" onClick={() => setDeletePrompt(true)} danger>
+                <TrashIcon size={18} />
+              </MobileBarBtn>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={cancelEdit}
+                style={{
+                  flex: 1, height: 40, borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'transparent',
+                  color: 'var(--secondary)', fontFamily: 'var(--font-sans)',
+                  fontSize: 14, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                style={{
+                  flex: 2, height: 40, borderRadius: 8,
+                  border: 'none', background: 'var(--accent)', color: '#fff',
+                  fontFamily: 'var(--font-sans)', fontSize: 14,
+                  fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                Save
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
     </div>
   );
