@@ -8,7 +8,7 @@ import { SettingsView } from './components/SettingsView';
 import { WeeklyReview } from './components/WeeklyReview';
 import { Toast } from './components/Toast';
 import { Sidebar } from './components/Sidebar';
-import { HomeScreen } from './components/HomeScreen';
+import { HomeScreen, MobileEmptyState } from './components/HomeScreen';
 import { MobileHero } from './components/MobileHero';
 import type { BrowseFilter } from './components/Sidebar';
 import { useTheme } from './hooks/useTheme';
@@ -219,6 +219,9 @@ export default function App() {
       />
 
       <main style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px' }}>
+        {view === 'list' && entries.length === 0 && (
+          <MobileEmptyState onNewEntry={() => openModal()} />
+        )}
         {view === 'list' && entries.length > 0 && (
           <MobileHero
             entries={entries}
@@ -226,7 +229,7 @@ export default function App() {
             onOpenWeeklyReview={() => setWeeklyOpen(true)}
           />
         )}
-        {view === 'list' && (
+        {view === 'list' && entries.length > 0 && (
           <ListView
             entries={entries}
             onOpen={goToDetail}
@@ -276,7 +279,7 @@ export default function App() {
         )}
       </main>
 
-      {isMobile && view === 'list' && (
+      {isMobile && view === 'list' && entries.length > 0 && (
         <button className="logit-fab" onClick={() => openModal()} aria-label="New entry">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
             <path d="M11 3v16M3 11h16" stroke="white" strokeWidth="2" strokeLinecap="round"/>

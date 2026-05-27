@@ -529,7 +529,7 @@ function EntryCard({ entry, onOpen, onEdit, onDuplicate, isExample }: {
   );
 }
 
-const EXAMPLE_ENTRY: Entry = {
+export const EXAMPLE_ENTRY: Entry = {
   id: '__example__',
   title: 'Use bottom navigation over hamburger menu on mobile',
   context:
@@ -676,6 +676,102 @@ function EmptyState({ onNewEntry, onCycleTheme, onOpenSettings, theme }: {
               See an example entry →
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Mobile empty state ──────────────────────────────────── */
+export function MobileEmptyState({ onNewEntry }: { onNewEntry: () => void }) {
+  const [showExample, setShowExample] = useState(false);
+
+  if (showExample) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px' }}>
+          <DetailView
+            entry={EXAMPLE_ENTRY}
+            allEntries={[]}
+            onBack={() => setShowExample(false)}
+            onOpen={() => {}}
+            onDuplicate={() => { onNewEntry(); setShowExample(false); }}
+            onDeleted={() => setShowExample(false)}
+            onToast={() => {}}
+            revisitPromptsEnabled={false}
+            isMobile={true}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', padding: '48px 24px 72px',
+    }}>
+      <div style={{ maxWidth: 480, width: '100%' }}>
+        {/* Wordmark */}
+        <div style={{
+          fontFamily: 'var(--font-serif)', fontSize: 48, fontWeight: 400,
+          color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1,
+          marginBottom: 14, textAlign: 'center',
+        }}>
+          <em>Logit</em><span style={{ color: 'var(--accent)' }}>.</span>
+        </div>
+
+        {/* Tagline */}
+        <p style={{
+          fontFamily: 'var(--font-serif)', fontSize: 15, fontStyle: 'italic',
+          color: 'var(--secondary)', textAlign: 'center',
+          margin: '0 0 28px', lineHeight: 1.5,
+        }}>
+          A logbook for designers who think out loud.
+        </p>
+
+        {/* Body copy */}
+        <p style={{
+          fontFamily: 'var(--font-serif)', fontSize: 15, lineHeight: 1.7,
+          color: 'var(--text)', margin: '0 0 12px',
+        }}>
+          Designers make hundreds of decisions every week. Most vanish into Figma
+          history, Slack threads, or memory. When an interviewer asks{' '}
+          <em>why did you choose that?</em>, the answer often blanks — not because
+          you didn't have a reason, but because you never wrote it down.
+        </p>
+        <p style={{
+          fontFamily: 'var(--font-serif)', fontSize: 15, lineHeight: 1.7,
+          color: 'var(--text)', margin: '0 0 36px',
+        }}>
+          Logit gives you a place to capture the reasoning while it's still fresh.
+          Over time, your log becomes a record of how you think.
+        </p>
+
+        {/* CTA */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <button
+            onClick={onNewEntry}
+            style={{
+              width: '100%', background: 'var(--accent)', border: 'none',
+              borderRadius: 10, padding: '16px 36px', cursor: 'pointer',
+              fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 600,
+              color: '#fff', letterSpacing: '0.01em',
+            }}
+          >
+            Log your first decision
+          </button>
+
+          <button
+            onClick={() => setShowExample(true)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              fontFamily: 'var(--font-sans)', fontSize: 14,
+              color: 'var(--accent)', letterSpacing: '0.01em',
+            }}
+          >
+            See an example entry →
+          </button>
         </div>
       </div>
     </div>
