@@ -1,6 +1,7 @@
 import { type WeeklyStats } from '../lib/weeklyReview';
 import { relativeTime } from '../lib/dates';
 import { ConfidenceDots } from './ConfidenceDots';
+import { useMobile } from '../hooks/useMobile';
 
 interface Props {
   stats: WeeklyStats;
@@ -35,6 +36,7 @@ function headline(count: number): string {
 }
 
 export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
+  const isMobile = useMobile();
   const { thisWeekCount, lastWeekCount, mostActiveProject, avgConfidence, lastWeekAvgConfidence, worthRevisiting, projectCounts } = stats;
 
   const countDelta = thisWeekCount - lastWeekCount;
@@ -46,6 +48,8 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
     ? projectCounts.find(p => p.project === mostActiveProject)?.count ?? 0
     : 0;
 
+  const pad = isMobile ? '20px' : '32px';
+
   return (
     <>
       {/* Overlay */}
@@ -54,35 +58,46 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
         zIndex: 80, animation: 'overlay-in 0.18s ease',
       }} />
 
-      {/* Modal */}
+      {/* Modal — bottom sheet on mobile, centered on desktop */}
       <div style={{
-        position: 'fixed', top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 'min(620px, calc(100vw - 32px))',
-        maxHeight: 'calc(100vh - 48px)', overflowY: 'auto',
-        background: '#fff',
+        position: 'fixed',
+        ...(isMobile
+          ? { bottom: 0, left: 0, right: 0, top: 'auto', transform: 'none', borderRadius: '16px 16px 0 0', maxHeight: '92vh' }
+          : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(620px, calc(100vw - 32px))', borderRadius: 14, maxHeight: 'calc(100vh - 48px)' }
+        ),
+        overflowY: 'auto',
+        background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 14, zIndex: 90,
-        animation: 'modal-in 0.18s cubic-bezier(0.16,1,0.3,1)',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.16)',
+        zIndex: 90,
+        animation: isMobile
+          ? 'sheet-in 0.22s cubic-bezier(0.16,1,0.3,1)'
+          : 'modal-in 0.18s cubic-bezier(0.16,1,0.3,1)',
+        boxShadow: '0 -4px 32px rgba(0,0,0,0.14)',
       }}>
 
+        {/* Drag handle (mobile only) */}
+        {isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+          </div>
+        )}
+
         {/* ── Hero section ──────────────────────────────────── */}
-        <div style={{ padding: '28px 32px 24px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: `${isMobile ? '16px' : '28px'} ${pad} 20px`, borderBottom: '1px solid var(--border)' }}>
           {/* Eyebrow */}
           <div style={{
             fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 600,
             letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: 'var(--accent)', marginBottom: 10,
+            color: 'var(--accent)', marginBottom: 8,
           }}>
             This Week's Review
           </div>
 
           {/* Headline */}
           <h2 style={{
-            fontFamily: 'var(--font-serif)', fontSize: 28, fontWeight: 400,
-            fontStyle: 'italic', color: '#1a1a1a',
-            margin: '0 0 10px', lineHeight: 1.2, letterSpacing: '-0.01em',
+            fontFamily: 'var(--font-serif)', fontSize: isMobile ? 24 : 28, fontWeight: 400,
+            fontStyle: 'italic', color: 'var(--text)',
+            margin: '0 0 8px', lineHeight: 1.25, letterSpacing: '-0.01em',
           }}>
             {headline(thisWeekCount)}
           </h2>
@@ -94,16 +109,14 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
           }}>
             {getWeekRange()} · <span
               onClick={onClose}
-              style={{ cursor: 'pointer', color: 'var(--muted)', textDecoration: 'none' }}
-              onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-              onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+              style={{ cursor: 'pointer', color: 'var(--muted)' }}
             >You can skip this anytime.</span>
           </div>
         </div>
 
         {/* ── Stat cards ────────────────────────────────────── */}
-        <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <div style={{ padding: `20px ${pad}`, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
 
             {/* Entries this week */}
             <div style={statCard}>
@@ -124,7 +137,7 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
               <div style={statLabel}>Most active project</div>
               {mostActiveProject ? (
                 <>
-                  <div style={{ ...statValue, fontStyle: 'italic', fontSize: mostActiveProject.length > 10 ? 22 : 28 }}>
+                  <div style={{ ...statValue, fontStyle: 'italic', fontSize: mostActiveProject.length > 10 ? 18 : 24 }}>
                     {mostActiveProject}
                   </div>
                   <div style={statSub}>
@@ -136,25 +149,21 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
               )}
             </div>
 
-            {/* Avg confidence */}
-            <div style={statCard}>
+            {/* Avg confidence — spans full width on mobile (3rd in 2-col grid) */}
+            <div style={{ ...statCard, ...(isMobile ? { gridColumn: '1 / -1' } : {}) }}>
               <div style={statLabel}>Avg. Confidence</div>
               {avgConfidence != null ? (
-                <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div style={statValue}>{avgConfidence.toFixed(1)}</div>
                   {confDelta !== null && confDelta !== 0 && (
-                    <div style={{ ...statSub, color: confDelta > 0 ? '#4caf50' : 'var(--accent)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                      {confDelta > 0
-                        ? <span>↑</span>
-                        : <span>↓</span>
-                      }
-                      {Math.abs(confDelta)} vs last week
+                    <div style={{ ...statSub, color: confDelta > 0 ? '#4caf50' : 'var(--accent)' }}>
+                      {confDelta > 0 ? '↑' : '↓'} {Math.abs(confDelta)} vs last week
                     </div>
                   )}
                   {(confDelta === null || confDelta === 0) && (
                     <div style={statSub}>out of 5</div>
                   )}
-                </>
+                </div>
               ) : (
                 <div style={{ ...statValue, color: 'var(--muted)' }}>—</div>
               )}
@@ -163,7 +172,7 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
         </div>
 
         {/* ── Worth revisiting ──────────────────────────────── */}
-        <div style={{ padding: '24px 32px 28px' }}>
+        <div style={{ padding: `20px ${pad} 24px` }}>
           <div style={{
             fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 400,
             color: '#1a1a1a', marginBottom: 6,
@@ -226,18 +235,19 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
 
         {/* ── Footer ────────────────────────────────────────── */}
         <div style={{
-          padding: '14px 32px', borderTop: '1px solid var(--border)',
-          display: 'flex', justifyContent: 'flex-end',
+          padding: isMobile ? `12px ${pad} 28px` : `14px ${pad}`,
+          borderTop: '1px solid var(--border)',
+          display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end',
         }}>
           <button onClick={onClose} style={{
-            padding: '7px 20px', borderRadius: 7, border: 'none',
+            flex: isMobile ? 1 : undefined,
+            padding: isMobile ? '12px 20px' : '7px 20px',
+            borderRadius: isMobile ? 10 : 7,
+            border: 'none',
             background: 'var(--accent)', color: '#fff',
-            fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 500,
-            cursor: 'pointer', transition: 'opacity 0.15s',
-          }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-          >
+            fontFamily: 'var(--font-sans)', fontSize: isMobile ? 15 : 13, fontWeight: 500,
+            cursor: 'pointer',
+          }}>
             Done
           </button>
         </div>
@@ -247,21 +257,21 @@ export function WeeklyReview({ stats, onClose, onOpenEntry }: Props) {
 }
 
 const statCard: React.CSSProperties = {
-  background: '#f7f6f3',
+  background: 'var(--bg)',
   borderRadius: 10,
-  padding: '16px 18px 14px',
+  padding: '14px 16px 12px',
   border: '1px solid var(--border)',
 };
 
 const statLabel: React.CSSProperties = {
   fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 500,
   letterSpacing: '0.08em', textTransform: 'uppercase',
-  color: 'var(--muted)', marginBottom: 10,
+  color: 'var(--muted)', marginBottom: 8,
 };
 
 const statValue: React.CSSProperties = {
-  fontFamily: 'var(--font-serif)', fontSize: 28, fontWeight: 400,
-  color: '#1a1a1a', lineHeight: 1.1, marginBottom: 8,
+  fontFamily: 'var(--font-serif)', fontSize: 26, fontWeight: 400,
+  color: 'var(--text)', lineHeight: 1.1, marginBottom: 4,
 };
 
 const statSub: React.CSSProperties = {
